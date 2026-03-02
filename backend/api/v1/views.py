@@ -2,11 +2,12 @@ from django.conf import settings
 from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from rest_framework import status
+from rest_framework import serializers as drf_serializers
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, inline_serializer
 from core.permissions import IsAdminRole
 from core.responses import api_response
 from core.pagination import StandardPagination
@@ -90,6 +91,7 @@ def tx_payload(tx: Transaction):
 class OTPRequestView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(request=OTPRequestSerializer)
     def post(self, request):
         serializer = OTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -104,6 +106,7 @@ class OTPRequestView(APIView):
 class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(request=OTPVerifySerializer)
     def post(self, request):
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -126,6 +129,12 @@ class OTPVerifyView(APIView):
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="LogoutRequest",
+            fields={"refresh": drf_serializers.CharField(required=False)},
+        )
+    )
     def post(self, request):
         token = request.data.get("refresh")
         if token:
@@ -140,6 +149,12 @@ class LogoutView(APIView):
 class WrappedTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
 
+    @extend_schema(
+        request=inline_serializer(
+            name="TokenRefreshRequest",
+            fields={"refresh": drf_serializers.CharField()},
+        )
+    )
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         return api_response(True, "Token refreshed", response.data, http_status=response.status_code)
@@ -149,6 +164,7 @@ class WrappedTokenRefreshView(TokenRefreshView):
 class CompleteOnboardingView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=OnboardingSerializer)
     def post(self, request):
         serializer = OnboardingSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -169,6 +185,15 @@ class UserMeView(APIView):
     def get(self, request):
         return api_response(True, "User profile", user_payload(request.user))
 
+    @extend_schema(
+        request=inline_serializer(
+            name="UserPatchRequest",
+            fields={
+                "full_name": drf_serializers.CharField(required=False),
+                "phone": drf_serializers.CharField(required=False),
+            },
+        )
+    )
     def patch(self, request):
         allowed = {"full_name", "phone"}
         for key, value in request.data.items():
@@ -182,6 +207,7 @@ class UserMeView(APIView):
 class SubmitKYCView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=KYCSubmitSerializer)
     def post(self, request):
         serializer = KYCSubmitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -197,6 +223,7 @@ class SubmitKYCView(APIView):
 class ChangePinView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ChangePinSerializer)
     def post(self, request):
         serializer = ChangePinSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -237,6 +264,7 @@ class DashboardView(APIView):
 class CardProvisionView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=CardProvisionSerializer)
     def post(self, request):
         serializer = CardProvisionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -267,6 +295,7 @@ class CardProvisionView(APIView):
 class FundWalletView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=FundWalletSerializer)
     def post(self, request):
         serializer = FundWalletSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -278,6 +307,7 @@ class FundWalletView(APIView):
 class NFCInitiateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=NFCInitiateSerializer)
     def post(self, request):
         serializer = NFCInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -298,6 +328,7 @@ class NFCInitiateView(APIView):
 class NFCExecuteView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=NFCExecuteSerializer)
     def post(self, request):
         serializer = NFCExecuteSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -326,6 +357,17 @@ class BillCategoryView(APIView):
 class BillProviderView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name="category",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                required=False,
+                description="Biller category code",
+            )
+        ]
+    )
     def get(self, request):
         return api_response(True, "Bill providers", bill_services.providers(request.query_params.get("category", "")))
 
@@ -334,6 +376,7 @@ class BillProviderView(APIView):
 class BillValidateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=BillValidateSerializer)
     def post(self, request):
         serializer = BillValidateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -344,6 +387,7 @@ class BillValidateView(APIView):
 class BillPayView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=BillPaySerializer)
     def post(self, request):
         serializer = BillPaySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -363,6 +407,7 @@ class BanksView(APIView):
 class ResolveAccountView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ResolveAccountSerializer)
     def post(self, request):
         serializer = ResolveAccountSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -374,6 +419,7 @@ class ResolveAccountView(APIView):
 class ResolveWetapView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ResolveWetapSerializer)
     def post(self, request):
         serializer = ResolveWetapSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -385,6 +431,7 @@ class ResolveWetapView(APIView):
 class TransferInitiateView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=TransferInitiateSerializer)
     def post(self, request):
         serializer = TransferInitiateSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -396,6 +443,14 @@ class TransferInitiateView(APIView):
 class TransactionListView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("limit", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("status", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+        ]
+    )
     def get(self, request):
         qs = transaction_list(request.user, request.query_params.get("type"), request.query_params.get("status"))
         paginator = StandardPagination()
@@ -412,6 +467,11 @@ class TransactionListView(APIView):
 class TransactionDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("ref", OpenApiTypes.STR, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def get(self, request, ref):
         tx = transaction_by_reference(request.user, ref)
         if not tx:
@@ -423,6 +483,7 @@ class TransactionDetailView(APIView):
 class ChatMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
+    @extend_schema(request=ChatMessageSerializer)
     def post(self, request):
         serializer = ChatMessageSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -452,6 +513,7 @@ class ChatThreadsView(APIView):
 class AdminLoginView(APIView):
     permission_classes = [AllowAny]
 
+    @extend_schema(request=AdminLoginSerializer)
     def post(self, request):
         serializer = AdminLoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -485,6 +547,14 @@ class AdminDashboardStatsView(APIView):
 class AdminTransactionsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("limit", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("status", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("type", OpenApiTypes.STR, OpenApiParameter.QUERY, required=False),
+        ]
+    )
     def get(self, request):
         qs = Transaction.objects.all().order_by("-created_at")
         status_filter = request.query_params.get("status")
@@ -506,6 +576,12 @@ class AdminTransactionsView(APIView):
 class AdminUsersView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("page", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+            OpenApiParameter("limit", OpenApiTypes.INT, OpenApiParameter.QUERY, required=False),
+        ]
+    )
     def get(self, request):
         qs = User.objects.filter(is_admin=False).order_by("-created_at")
         paginator = StandardPagination()
@@ -518,6 +594,11 @@ class AdminUsersView(APIView):
 class AdminUserDetailView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("user_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def get(self, request, user_id):
         user = get_object_or_404(User, id=user_id)
         return api_response(True, "User detail", user_payload(user))
@@ -527,6 +608,11 @@ class AdminUserDetailView(APIView):
 class AdminKYCApproveView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("user_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def post(self, request, user_id):
         approve_kyc(request.user, user_id)
         return api_response(True, "KYC approved", {"user_id": user_id})
@@ -536,6 +622,12 @@ class AdminKYCApproveView(APIView):
 class AdminKYCRejectView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        request=KYCRejectSerializer,
+        parameters=[
+            OpenApiParameter("user_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ],
+    )
     def post(self, request, user_id):
         serializer = KYCRejectSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -569,6 +661,11 @@ class AdminCardsView(APIView):
 class AdminCardBlockView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter("card_id", OpenApiTypes.UUID, OpenApiParameter.PATH, required=True),
+        ]
+    )
     def post(self, request, card_id):
         block_card(request.user, card_id)
         return api_response(True, "Card blocked", {"card_id": card_id})

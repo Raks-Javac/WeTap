@@ -2,8 +2,9 @@ from decimal import Decimal
 
 ENV_DEV = "dev"
 ENV_UAT = "uat"
+ENV_STAGING = "staging"
 ENV_PROD = "prod"
-ENV_CHOICES = (ENV_DEV, ENV_UAT, ENV_PROD)
+ENV_CHOICES = (ENV_DEV, ENV_UAT, ENV_STAGING, ENV_PROD)
 
 ROLE_SUPER_ADMIN = "SUPER_ADMIN"
 ROLE_OPS = "OPS"

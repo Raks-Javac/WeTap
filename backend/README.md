@@ -16,6 +16,7 @@ Django 5 + DRF backend for WeTap user and admin applications.
 - `middleware/`: request security, response envelope, logging
 - `apps/`: modular domain apps (`authn`, `users`, `kyc`, `wallets`, `cards`, `nfc`, `payments`, `bills`, `transfers`, `transactions`, `chat`, `admin_panel`, `audit`)
 - `api/v1/`: serializers, views, routes
+- Architecture guide: `ARCHITECTURE.md`
 
 ## Local run (venv)
 ```bash

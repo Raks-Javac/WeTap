@@ -3,7 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
-from core.constants import ENV_DEV, ENV_UAT, ENV_PROD
+from core.constants import ENV_DEV, ENV_UAT, ENV_STAGING, ENV_PROD
 
 load_dotenv()
 
@@ -173,7 +173,11 @@ RATE_LIMIT_OTP_PER_10M = int(os.getenv("RATE_LIMIT_OTP_PER_10M", "5"))
 RATE_LIMIT_FAIL_OPEN = os.getenv("RATE_LIMIT_FAIL_OPEN", "true").lower() == "true"
 
 ENABLE_DOCS_IN_DEV = os.getenv("ENABLE_DOCS_IN_DEV", "true").lower() == "true"
-SWAGGER_ENABLED = ENVIRONMENT == ENV_UAT or (ENVIRONMENT == ENV_DEV and ENABLE_DOCS_IN_DEV)
+SWAGGER_ENABLED = (
+    ENVIRONMENT == ENV_UAT
+    or ENVIRONMENT == ENV_STAGING
+    or (ENVIRONMENT == ENV_DEV and ENABLE_DOCS_IN_DEV)
+)
 if ENVIRONMENT == ENV_PROD:
     SWAGGER_ENABLED = False
 
