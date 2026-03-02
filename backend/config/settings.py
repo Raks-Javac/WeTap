@@ -177,10 +177,39 @@ SWAGGER_ENABLED = ENVIRONMENT == ENV_UAT or (ENVIRONMENT == ENV_DEV and ENABLE_D
 if ENVIRONMENT == ENV_PROD:
     SWAGGER_ENABLED = False
 
+API_SERVER_DEV_URL = os.getenv("API_SERVER_DEV_URL", "http://127.0.0.1:8000")
+API_SERVER_UAT_URL = os.getenv("API_SERVER_UAT_URL", "https://uat-api.wetap.app")
+API_SERVER_STAGING_URL = os.getenv("API_SERVER_STAGING_URL", "https://staging-api.wetap.app")
+API_SERVER_PROD_URL = os.getenv("API_SERVER_PROD_URL", "https://api.wetap.app")
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "WeTap API",
     "DESCRIPTION": "WeTap NFC-first payment platform backend",
     "VERSION": "1.0.0",
+    "SORT_OPERATIONS": True,
+    "SWAGGER_UI_SETTINGS": {
+        "docExpansion": "none",
+        "defaultModelsExpandDepth": -1,
+        "displayOperationId": False,
+        "filter": True,
+    },
+    "SERVERS": [
+        {"url": API_SERVER_DEV_URL, "description": "Development"},
+        {"url": API_SERVER_UAT_URL, "description": "UAT"},
+        {"url": API_SERVER_STAGING_URL, "description": "Staging"},
+        {"url": API_SERVER_PROD_URL, "description": "Production"},
+    ],
+    "TAGS": [
+        {"name": "Auth", "description": "Authentication and token lifecycle"},
+        {"name": "Users", "description": "User profile, onboarding, KYC, dashboard"},
+        {"name": "Cards", "description": "Card provisioning and management"},
+        {"name": "Payments", "description": "Wallet funding and NFC payments"},
+        {"name": "Bills", "description": "Biller discovery, validation, and payments"},
+        {"name": "Transfers", "description": "Bank and WeTap transfers"},
+        {"name": "Transactions", "description": "Transaction history and lookup"},
+        {"name": "Chat", "description": "AI assistant chat endpoints"},
+        {"name": "Admin", "description": "Admin authentication and operations"},
+    ],
 }
 
 if ENVIRONMENT == ENV_PROD:

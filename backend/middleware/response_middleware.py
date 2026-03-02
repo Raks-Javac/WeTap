@@ -18,7 +18,7 @@ class ResponseEnvelopeMiddleware:
             message = "Internal server error" if settings.ENVIRONMENT == "prod" else str(exc)
             response = JsonResponse({"status": False, "message": message, "data": None}, status=500)
 
-        if request.path.startswith("/api/"):
+        if request.path.startswith("/api/") and not self._is_docs_or_schema_route(request.path):
             response = self._wrap_if_needed(response)
             response["X-Trace-Id"] = getattr(request, "trace_id", "")
         return response
@@ -56,3 +56,6 @@ class ResponseEnvelopeMiddleware:
 
     def _already_wrapped(self, payload: dict) -> bool:
         return isinstance(payload, dict) and {"status", "message", "data"}.issubset(payload.keys())
+
+    def _is_docs_or_schema_route(self, path: str) -> bool:
+        return path.startswith("/api/schema/") or path.startswith("/api/docs/")

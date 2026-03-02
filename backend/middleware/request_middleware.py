@@ -14,7 +14,7 @@ SUSPICIOUS_PATTERNS = [
     r";--",
     r"\\balert\\s*\\(",
 ]
-JSON_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+JSON_METHODS = {"POST", "PUT", "PATCH"}
 
 
 class RequestSecurityMiddleware:
@@ -32,16 +32,18 @@ class RequestSecurityMiddleware:
 
         if request.path.startswith("/api/"):
             if request.method in JSON_METHODS:
-                if not self._is_json_content_type(request.content_type):
+                has_body = self._has_body(request)
+                if has_body and not self._is_json_content_type(request.content_type):
                     return JsonResponse(_envelope(False, "Content-Type must be application/json", None), status=415)
                 too_large = self._is_payload_too_large(request)
                 if too_large:
                     return JsonResponse(_envelope(False, "Payload too large", None), status=413)
 
-                parsed, err = self._parse_and_validate_json(request)
-                if err:
-                    return JsonResponse(_envelope(False, err, None), status=400)
-                request.payload = parsed
+                if has_body:
+                    parsed, err = self._parse_and_validate_json(request)
+                    if err:
+                        return JsonResponse(_envelope(False, err, None), status=400)
+                    request.payload = parsed
 
             actor = self._actor_key(request)
             if is_limited("global", actor, settings.RATE_LIMIT_GLOBAL_PER_MIN, 60):
@@ -61,6 +63,15 @@ class RequestSecurityMiddleware:
 
     def _is_json_content_type(self, content_type: str) -> bool:
         return "application/json" in (content_type or "").lower()
+
+    def _has_body(self, request) -> bool:
+        length = request.META.get("CONTENT_LENGTH")
+        if length is None:
+            return bool(request.body)
+        try:
+            return int(length) > 0
+        except (TypeError, ValueError):
+            return bool(request.body)
 
     def _is_payload_too_large(self, request) -> bool:
         length = request.META.get("CONTENT_LENGTH")

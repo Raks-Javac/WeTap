@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
+from drf_spectacular.utils import extend_schema
 from core.permissions import IsAdminRole
 from core.responses import api_response
 from core.pagination import StandardPagination
@@ -85,6 +86,7 @@ def tx_payload(tx: Transaction):
     }
 
 
+@extend_schema(tags=["Auth"])
 class OTPRequestView(APIView):
     permission_classes = [AllowAny]
 
@@ -98,6 +100,7 @@ class OTPRequestView(APIView):
         return api_response(True, "OTP requested", payload)
 
 
+@extend_schema(tags=["Auth"])
 class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
 
@@ -119,6 +122,7 @@ class OTPVerifyView(APIView):
         )
 
 
+@extend_schema(tags=["Auth"])
 class LogoutView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -132,6 +136,7 @@ class LogoutView(APIView):
         return api_response(True, "Logged out", None)
 
 
+@extend_schema(tags=["Auth"])
 class WrappedTokenRefreshView(TokenRefreshView):
     permission_classes = [AllowAny]
 
@@ -140,6 +145,7 @@ class WrappedTokenRefreshView(TokenRefreshView):
         return api_response(True, "Token refreshed", response.data, http_status=response.status_code)
 
 
+@extend_schema(tags=["Users"])
 class CompleteOnboardingView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -156,6 +162,7 @@ class CompleteOnboardingView(APIView):
         return api_response(True, "Onboarding complete", user_payload(request.user))
 
 
+@extend_schema(tags=["Users"])
 class UserMeView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -171,6 +178,7 @@ class UserMeView(APIView):
         return api_response(True, "User updated", user_payload(request.user))
 
 
+@extend_schema(tags=["Users"])
 class SubmitKYCView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -185,6 +193,7 @@ class SubmitKYCView(APIView):
         return api_response(True, "KYC submitted", {"status": profile.status})
 
 
+@extend_schema(tags=["Users"])
 class ChangePinView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -198,6 +207,7 @@ class ChangePinView(APIView):
         return api_response(True, "PIN changed", None)
 
 
+@extend_schema(tags=["Users"])
 class DashboardView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -223,6 +233,7 @@ class DashboardView(APIView):
         )
 
 
+@extend_schema(tags=["Cards"])
 class CardProvisionView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -252,6 +263,7 @@ class CardProvisionView(APIView):
         return api_response(True, "Card provisioned", {"card_id": str(card.id), "last4": card.last4, "status": card.status})
 
 
+@extend_schema(tags=["Payments"])
 class FundWalletView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -262,6 +274,7 @@ class FundWalletView(APIView):
         return api_response(True, "Wallet funded", tx_payload(tx))
 
 
+@extend_schema(tags=["Payments"])
 class NFCInitiateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -281,6 +294,7 @@ class NFCInitiateView(APIView):
         )
 
 
+@extend_schema(tags=["Payments"])
 class NFCExecuteView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -300,6 +314,7 @@ class NFCExecuteView(APIView):
         return api_response(True, "NFC payment executed", tx_payload(tx))
 
 
+@extend_schema(tags=["Bills"])
 class BillCategoryView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -307,6 +322,7 @@ class BillCategoryView(APIView):
         return api_response(True, "Bill categories", bill_services.categories())
 
 
+@extend_schema(tags=["Bills"])
 class BillProviderView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -314,6 +330,7 @@ class BillProviderView(APIView):
         return api_response(True, "Bill providers", bill_services.providers(request.query_params.get("category", "")))
 
 
+@extend_schema(tags=["Bills"])
 class BillValidateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -323,6 +340,7 @@ class BillValidateView(APIView):
         return api_response(True, "Bill validation", bill_services.validate_bill(serializer.validated_data))
 
 
+@extend_schema(tags=["Bills"])
 class BillPayView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -333,6 +351,7 @@ class BillPayView(APIView):
         return api_response(True, "Bill payment completed", tx_payload(tx))
 
 
+@extend_schema(tags=["Transfers"])
 class BanksView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -340,6 +359,7 @@ class BanksView(APIView):
         return api_response(True, "Banks", transfer_services.list_banks())
 
 
+@extend_schema(tags=["Transfers"])
 class ResolveAccountView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -350,6 +370,7 @@ class ResolveAccountView(APIView):
         return api_response(True, "Account resolved", data)
 
 
+@extend_schema(tags=["Transfers"])
 class ResolveWetapView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -360,6 +381,7 @@ class ResolveWetapView(APIView):
         return api_response(True, "WeTap user resolved", data)
 
 
+@extend_schema(tags=["Transfers"])
 class TransferInitiateView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -370,6 +392,7 @@ class TransferInitiateView(APIView):
         return api_response(True, "Transfer processed", tx_payload(tx))
 
 
+@extend_schema(tags=["Transactions"])
 class TransactionListView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -385,6 +408,7 @@ class TransactionListView(APIView):
         )
 
 
+@extend_schema(tags=["Transactions"])
 class TransactionDetailView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -395,6 +419,7 @@ class TransactionDetailView(APIView):
         return api_response(True, "Transaction", tx_payload(tx))
 
 
+@extend_schema(tags=["Chat"])
 class ChatMessageView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -413,6 +438,7 @@ class ChatMessageView(APIView):
         )
 
 
+@extend_schema(tags=["Chat"])
 class ChatThreadsView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -422,6 +448,7 @@ class ChatThreadsView(APIView):
         return api_response(True, "Chat threads", data)
 
 
+@extend_schema(tags=["Admin"])
 class AdminLoginView(APIView):
     permission_classes = [AllowAny]
 
@@ -446,6 +473,7 @@ class AdminLoginView(APIView):
         )
 
 
+@extend_schema(tags=["Admin"])
 class AdminDashboardStatsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -453,6 +481,7 @@ class AdminDashboardStatsView(APIView):
         return api_response(True, "Admin stats", dashboard_stats())
 
 
+@extend_schema(tags=["Admin"])
 class AdminTransactionsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -473,6 +502,7 @@ class AdminTransactionsView(APIView):
         )
 
 
+@extend_schema(tags=["Admin"])
 class AdminUsersView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -484,6 +514,7 @@ class AdminUsersView(APIView):
         return api_response(True, "Users", {"items": data, "count": paginator.page.paginator.count, "page": paginator.page.number})
 
 
+@extend_schema(tags=["Admin"])
 class AdminUserDetailView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -492,6 +523,7 @@ class AdminUserDetailView(APIView):
         return api_response(True, "User detail", user_payload(user))
 
 
+@extend_schema(tags=["Admin"])
 class AdminKYCApproveView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -500,6 +532,7 @@ class AdminKYCApproveView(APIView):
         return api_response(True, "KYC approved", {"user_id": user_id})
 
 
+@extend_schema(tags=["Admin"])
 class AdminKYCRejectView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -510,6 +543,7 @@ class AdminKYCRejectView(APIView):
         return api_response(True, "KYC rejected", {"user_id": user_id})
 
 
+@extend_schema(tags=["Admin"])
 class AdminCardsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -531,6 +565,7 @@ class AdminCardsView(APIView):
         return api_response(True, "Cards", {"items": data, "count": paginator.page.paginator.count, "page": paginator.page.number})
 
 
+@extend_schema(tags=["Admin"])
 class AdminCardBlockView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -539,6 +574,7 @@ class AdminCardBlockView(APIView):
         return api_response(True, "Card blocked", {"card_id": card_id})
 
 
+@extend_schema(tags=["Admin"])
 class AdminAuditLogsView(APIView):
     permission_classes = [IsAuthenticated, IsAdminRole]
 

@@ -29,6 +29,14 @@ python manage.py loaddata seed.json
 python manage.py runserver
 ```
 
+## Docker Compose (env-only secrets)
+```bash
+cd backend
+cp .env.docker.example .env
+docker compose up --build
+```
+Do not hardcode secrets in `docker-compose.yml`; keep secrets in `.env` or your deployment secret manager.
+
 ## Environment control
 - `ENVIRONMENT=dev|uat|prod` controls behavior hard gates.
 - `X-Environment` request header is accepted for tagging/logging; in `prod` it is forced to `prod`.
