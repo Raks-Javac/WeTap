@@ -10,6 +10,26 @@ Django 5 + DRF backend for WeTap user and admin applications.
 - Redis (OTP/cache/rate limits)
 - Celery (notifications/reconciliation/webhooks)
 
+## Low-cost mode (no Redis, no workers)
+You can run safely without Redis and Celery workers for early-stage deployments.
+
+Set these env values:
+```bash
+CACHE_BACKEND=locmem
+USE_ASYNC_TASKS=false
+CELERY_TASK_ALWAYS_EAGER=true
+CELERY_TASK_EAGER_PROPAGATES=true
+```
+
+Behavior:
+- OTP: still works (DB fallback already implemented)
+- Rate limiting: uses cache backend (locmem in this mode)
+- Background tasks: executed inline in API process
+- Celery worker process: optional, not required
+
+Tradeoff:
+- Works well on a single API instance. For multiple instances, add Redis later for shared cache/rate-limit state.
+
 ## Project structure
 - `config/`: settings/urls/wsgi/asgi/celery
 - `core/`: shared constants, exceptions, response helpers, security utilities
@@ -17,6 +37,7 @@ Django 5 + DRF backend for WeTap user and admin applications.
 - `apps/`: modular domain apps (`authn`, `users`, `kyc`, `wallets`, `cards`, `nfc`, `payments`, `bills`, `transfers`, `transactions`, `chat`, `admin_panel`, `audit`)
 - `api/v1/`: serializers, views, routes
 - Architecture guide: `ARCHITECTURE.md`
+- Full endpoint reference (payloads/headers/queries): `API_ENDPOINTS.md`
 
 ## Local run (venv)
 ```bash
@@ -152,6 +173,8 @@ Do not run against production.
 ```bash
 celery -A config worker -l info
 ```
+
+Only required when `USE_ASYNC_TASKS=true`.
 
 ## Security checks (CI-friendly)
 ```bash

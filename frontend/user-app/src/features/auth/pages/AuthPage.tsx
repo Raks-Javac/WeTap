@@ -4,6 +4,7 @@ import { ArrowLeft, KeyRound, Loader2, Mail } from "lucide-react";
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../../../core/api";
+import { useToast } from "../../../components/toast/ToastProvider";
 
 const AuthPage = () => {
   const navigate = useNavigate();
@@ -12,23 +13,27 @@ const AuthPage = () => {
   const [step, setStep] = useState<1 | 2>(1);
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
+  const { showToast } = useToast();
 
   const emailMutation = useMutation({
-    mutationFn: async () => {
-      return new Promise((resolve) => setTimeout(resolve, 800)); // Simulate sending OTP
-    },
-    onSuccess: () => {
+    mutationFn: () => api.auth.requestOtp(email),
+    onSuccess: (data: any) => {
+      showToast(data?.debug_otp ? `OTP: ${data.debug_otp}` : "OTP sent", "info");
       setStep(2);
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Could not send OTP", "error");
     },
   });
 
   const authMutation = useMutation({
-    mutationFn: (data: any) => api.auth.login(data), // Using login simulation for both
-    onSuccess: () => {
-      navigate("/onboarding/mode"); // Go to tap mode
+    mutationFn: () => api.auth.login({ email, otp }),
+    onSuccess: (data: any) => {
+      showToast("Authentication successful", "success");
+      navigate(data?.is_new ? "/onboarding/mode" : "/app/home");
     },
     onError: (err: any) => {
-      alert(err.message || "Authentication failed");
+      showToast(err.message || "Authentication failed", "error");
     },
   });
 
@@ -44,7 +49,7 @@ const AuthPage = () => {
       alert("OTP must be 4 digits");
       return;
     }
-    authMutation.mutate({ email, password: otp });
+    authMutation.mutate();
   };
 
   return (

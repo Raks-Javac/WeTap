@@ -11,32 +11,36 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMutation } from "@tanstack/react-query";
+import { useToast } from "../../../components/toast/ToastProvider";
 import { useAdminStore } from "../../../core/store";
+import { adminApi } from "../../../services/adminApi";
 
 export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-
   const { login, theme, setTheme } = useAdminStore();
   const navigate = useNavigate();
+  const { showToast } = useToast();
+
+  const loginMutation = useMutation({
+    mutationFn: adminApi.login,
+    onSuccess: () => {
+      login();
+      showToast("Admin login successful", "success");
+      navigate("/dashboard");
+    },
+    onError: (err: any) => {
+      setError(err.message || "Access Denied: Invalid Security Credentials");
+      showToast(err.message || "Login failed", "error");
+    },
+  });
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
-
-    // Simulate API call
-    setTimeout(() => {
-      if (username === "admin" && password === "wetap2026") {
-        login();
-        navigate("/dashboard");
-      } else {
-        setError("Access Denied: Invalid Security Credentials");
-        setIsLoading(false);
-      }
-    }, 1500);
+    loginMutation.mutate({ email: username, password });
   };
 
   const toggleTheme = () => {
@@ -194,11 +198,11 @@ export default function LoginPage() {
               whileHover={{ scale: 1.01, y: -2 }}
               whileTap={{ scale: 0.98 }}
               type="submit"
-              disabled={isLoading}
+              disabled={loginMutation.isPending}
               className="w-full h-16 bg-gradient-to-r from-brand-primary to-blue-600 hover:from-blue-600 hover:to-indigo-600 text-white rounded-2xl font-black text-lg shadow-[0_12px_24px_-8px_rgba(59,130,246,0.5)] flex justify-center items-center gap-3 transition-all disabled:opacity-70 disabled:cursor-not-allowed group/btn overflow-hidden relative"
             >
               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-[shimmer_2s_infinite] skew-x-12" />
-              {isLoading ? (
+              {loginMutation.isPending ? (
                 <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>

@@ -1,9 +1,15 @@
 import { motion } from "framer-motion";
 import { ArrowLeft, CreditCard, ExternalLink, QrCode } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "../../../core/api";
 
 const AddMoneyPage = () => {
   const navigate = useNavigate();
+  const { data: dashboard } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.users.dashboard,
+  });
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -105,10 +111,10 @@ const AddMoneyPage = () => {
             Your WeTap Account
           </h3>
           <p className="text-3xl font-black tracking-tight text-[var(--color-text-primary)] mb-1">
-            0123456789
+            {dashboard?.wallet?.virtual_account?.number || "N/A"}
           </p>
           <p className="text-sm font-medium text-[var(--color-text-secondary)] mb-6">
-            WEMA Bank
+            {dashboard?.wallet?.virtual_account?.bank || "WeTap Bank"}
           </p>
           <button className="px-6 py-2 bg-[var(--color-bg-secondary)] border border-[var(--color-border)] rounded-full text-sm font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-border)] transition-colors active:scale-95 shadow-sm">
             Copy Details

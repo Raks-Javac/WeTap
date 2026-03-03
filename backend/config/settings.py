@@ -3,6 +3,7 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 import dj_database_url
+from corsheaders.defaults import default_headers
 from core.constants import ENV_DEV, ENV_UAT, ENV_STAGING, ENV_PROD
 
 load_dotenv()
@@ -155,12 +156,28 @@ else:
         }
     }
 
-CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", REDIS_URL)
-CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", REDIS_URL)
+USE_ASYNC_TASKS = os.getenv("USE_ASYNC_TASKS", "false").lower() == "true"
+
+CELERY_BROKER_URL = os.getenv(
+    "CELERY_BROKER_URL",
+    REDIS_URL if USE_ASYNC_TASKS else "memory://",
+)
+CELERY_RESULT_BACKEND = os.getenv(
+    "CELERY_RESULT_BACKEND",
+    REDIS_URL if USE_ASYNC_TASKS else "cache+memory://",
+)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = "UTC"
+CELERY_TASK_ALWAYS_EAGER = os.getenv(
+    "CELERY_TASK_ALWAYS_EAGER",
+    "false" if USE_ASYNC_TASKS else "true",
+).lower() == "true"
+CELERY_TASK_EAGER_PROPAGATES = os.getenv(
+    "CELERY_TASK_EAGER_PROPAGATES",
+    "false" if USE_ASYNC_TASKS else "true",
+).lower() == "true"
 
 USE_MOCK_PROCESSOR = os.getenv("USE_MOCK_PROCESSOR", "true").lower() == "true"
 FIELD_ENCRYPTION_KEY = os.getenv("FIELD_ENCRYPTION_KEY", "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=")
@@ -224,3 +241,8 @@ if ENVIRONMENT == ENV_PROD:
     X_FRAME_OPTIONS = "DENY"
 
 CORS_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CORS_ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174").split(",") if o.strip()]
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "x-environment",
+    "idempotency-key",
+    "x-trace-id",
+]

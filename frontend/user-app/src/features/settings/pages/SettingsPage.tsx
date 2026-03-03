@@ -128,7 +128,7 @@ const SettingsPage = () => {
         </div>
 
         <div className="space-y-3 pt-2">
-          {(["dev", "uat", "prod"] as const).map((env) => (
+          {(["dev", "uat", "staging", "prod"] as const).map((env) => (
             <button
               key={env}
               onClick={() => setEnvironment(env)}
@@ -147,8 +147,10 @@ const SettingsPage = () => {
                     className={
                       env === "dev"
                         ? "text-purple-500"
-                        : env === "uat"
-                          ? "text-blue-500"
+                      : env === "uat"
+                        ? "text-blue-500"
+                        : env === "staging"
+                          ? "text-amber-500"
                           : "text-emerald-500"
                     }
                   />

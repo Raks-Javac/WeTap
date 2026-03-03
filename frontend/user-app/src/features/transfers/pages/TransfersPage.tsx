@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     ArrowLeft,
@@ -9,22 +9,21 @@ import {
     ShieldAlert,
     User,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../core/api";
-
-const BANKS = [
-  "Access Bank",
-  "Guaranty Trust Bank",
-  "Zenith Bank",
-  "First Bank of Nigeria",
-  "UBA",
-];
+import { useToast } from "../../../components/toast/ToastProvider";
 
 const TransfersPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { ref } = useParams();
+  const { showToast } = useToast();
+
+  const { data: banks = [] } = useQuery({
+    queryKey: ["banks"],
+    queryFn: api.transfers.banks,
+  });
 
   // Determine stage from URL
   const stage = useMemo(() => {
@@ -35,10 +34,16 @@ const TransfersPage = () => {
 
   // Form State
   const [tab, setTab] = useState<"p2p" | "bank">("bank");
-  const [bank, setBank] = useState(BANKS[0]);
+  const [bank, setBank] = useState("");
   const [account, setAccount] = useState("");
   const [amount, setAmount] = useState("");
   const [narration, setNarration] = useState("");
+
+  useEffect(() => {
+    if (!bank && banks.length > 0) {
+      setBank(banks[0].code);
+    }
+  }, [bank, banks]);
 
   const transferData = location.state || {
     type: tab,
@@ -51,9 +56,13 @@ const TransfersPage = () => {
   const transferMutation = useMutation({
     mutationFn: api.transactions.transfer,
     onSuccess: (data: any) => {
+      showToast("Transfer processed", "success");
       navigate(`/app/transfers/status/${data.id}`, {
         state: { ...transferData, id: data.id },
       });
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Transfer failed", "error");
     },
   });
 
@@ -63,7 +72,8 @@ const TransfersPage = () => {
     navigate("/app/transfers/confirm", {
       state: {
         type: tab,
-        bank: tab === "bank" ? bank : "WeTap Network",
+        bank: tab === "bank" ? (banks.find((b: any) => b.code === bank)?.name || bank) : "WeTap Network",
+        bankCode: bank,
         account,
         amount: Number(amount),
         narration,
@@ -73,10 +83,14 @@ const TransfersPage = () => {
 
   const handleConfirm = () => {
     transferMutation.mutate({
-      type: transferData.type === "bank" ? "Bank Transfer" : "WeTap Transfer",
-      name: transferData.account,
-      amount: -transferData.amount,
-      date: new Date().toISOString(),
+      amount: Number(transferData.amount),
+      ...(transferData.type === "bank"
+        ? {
+            bank_code: transferData.bankCode || banks[0]?.code || "058",
+            account_number: transferData.account,
+            account_name: transferData.account,
+          }
+        : { wetap_email: transferData.account }),
     });
   };
 
@@ -145,9 +159,9 @@ const TransfersPage = () => {
                         onChange={(e) => setBank(e.target.value)}
                         className="w-full px-4 py-3.5 rounded-2xl bg-[var(--color-bg-secondary)] border-2 border-transparent focus:border-brand-primary focus:bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] font-medium text-sm transition-all appearance-none cursor-pointer"
                       >
-                        {BANKS.map((b) => (
-                          <option key={b} value={b}>
-                            {b}
+                        {banks.map((b: any) => (
+                          <option key={b.code} value={b.code}>
+                            {b.name}
                           </option>
                         ))}
                       </select>

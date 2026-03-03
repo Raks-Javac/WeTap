@@ -17,7 +17,7 @@ export const useAdminStore = create<GlobalAdminState>()(
     (set) => ({
       theme: "dark",
       environment: "dev",
-      isAuthenticated: false,
+      isAuthenticated: Boolean(localStorage.getItem("wetap_admin_access")),
       setTheme: (theme) => set({ theme }),
       setEnvironment: (environment) => set({ environment }),
       login: () => set({ isAuthenticated: true }),

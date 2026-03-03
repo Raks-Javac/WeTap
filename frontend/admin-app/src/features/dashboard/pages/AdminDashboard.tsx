@@ -18,6 +18,9 @@ import {
     XAxis,
     YAxis,
 } from "recharts";
+import { useQuery } from "@tanstack/react-query";
+import LoadingState from "../../../components/state/LoadingState";
+import { adminApi } from "../../../services/adminApi";
 
 const data = [
   { name: "Mon", volume: 4200, count: 240 },
@@ -76,6 +79,16 @@ const StatCard = ({
 );
 
 const AdminDashboard = () => {
+  const { data: statsResponse, isLoading } = useQuery({
+    queryKey: ["admin-stats"],
+    queryFn: adminApi.dashboardStats,
+  });
+  const stats = statsResponse?.data;
+
+  if (isLoading) {
+    return <LoadingState label="Loading admin dashboard..." />;
+  }
+
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
       <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[var(--color-border)] pb-8">
@@ -106,7 +119,7 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <StatCard
           title="Gross Volume (24h)"
-          value="₦28.4M"
+          value={`₦${Number(stats?.transactions || 0).toLocaleString()}`}
           trend="+18.5%"
           isPositive={true}
           secondary="Performance: Peak"
@@ -115,7 +128,7 @@ const AdminDashboard = () => {
         />
         <StatCard
           title="Active Endpoints"
-          value="12,402"
+          value={Number(stats?.users || 0).toLocaleString()}
           trend="+4.1%"
           isPositive={true}
           secondary="NFC Nodes Active"
@@ -124,7 +137,7 @@ const AdminDashboard = () => {
         />
         <StatCard
           title="Failure Velocity"
-          value="0.02%"
+          value={`${Math.max(0, Number(stats?.transactions || 0) - Number(stats?.success_transactions || 0))}`}
           trend="-0.01%"
           isPositive={false}
           secondary="Stable Threshold"
@@ -133,7 +146,7 @@ const AdminDashboard = () => {
         />
         <StatCard
           title="Network Rev"
-          value="₦412k"
+          value={Number(stats?.cards || 0).toLocaleString()}
           trend="+12.2%"
           isPositive={true}
           secondary="Processing Yield"

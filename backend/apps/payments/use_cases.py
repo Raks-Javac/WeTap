@@ -8,6 +8,8 @@ from core.utils import generate_reference, to_decimal
 from apps.transactions.models import Transaction
 from apps.wallets.services import credit_wallet_atomic, debit_wallet_atomic
 from apps.payments.processors import get_payment_processor
+from apps.payments.tasks import reconcile_transaction, send_notification
+from core.async_tasks import dispatch_task
 from .repositories import KYCRepository, CardRepository, TransactionRepository
 
 
@@ -40,6 +42,10 @@ def fund_wallet(user, amount, idempotency_key: str = ""):
     tx.processor_code = result.get("code", "")
     tx.processor_payload = result
     tx.save()
+
+    if tx.status == TX_SUCCESS:
+        dispatch_task(send_notification, str(user.id), f"Wallet funded: {amount}")
+    dispatch_task(reconcile_transaction, reference)
     return tx
 
 
@@ -90,5 +96,9 @@ def execute_nfc_payment(user, session, card_id: str, method: str, amount, idempo
         idempotent.completed = True
         idempotent.response_data = {"reference": tx.reference, "status": tx.status}
         idempotent.save(update_fields=["completed", "response_data"])
+
+    if tx.status == TX_SUCCESS:
+        dispatch_task(send_notification, str(user.id), f"NFC payment successful: {amount}")
+    dispatch_task(reconcile_transaction, reference)
 
     return tx

@@ -5,7 +5,6 @@ import {
   ArrowUpRight,
   ChevronRight,
   CreditCard,
-  Loader2,
   TrendingUp,
   Wallet,
 } from "lucide-react";
@@ -19,6 +18,9 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "../../../core/api";
+import EmptyState from "../../../components/state/EmptyState";
+import ErrorState from "../../../components/state/ErrorState";
+import LoadingState from "../../../components/state/LoadingState";
 
 const mockGraphData = [
   { day: "Mon", amount: 12500 },
@@ -33,10 +35,22 @@ const mockGraphData = [
 const DashboardPage = () => {
   const navigate = useNavigate();
 
-  const { data: transactions, isLoading } = useQuery({
-    queryKey: ["transactions"],
-    queryFn: api.transactions.list,
+  const {
+    data: dashboard,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: api.users.dashboard,
   });
+  const transactions = (dashboard?.recent_transactions || []).map((tx: any) => ({
+    id: tx.reference || tx.id,
+    name: tx.merchant || tx.counterparty || "WeTap",
+    type: tx.type || "Transaction",
+    date: tx.created_at || tx.timestamp,
+    amount: Number(tx.direction === "credit" ? tx.amount : -tx.amount),
+  }));
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -109,7 +123,8 @@ const DashboardPage = () => {
                   <Wallet size={14} /> Total Available Balance
                 </p>
                 <h2 className="text-4xl sm:text-5xl font-extrabold tracking-tight">
-                  <span className="text-white/60 text-2xl mr-1">₦</span>450,000
+                  <span className="text-white/60 text-2xl mr-1">₦</span>
+                  {Number(dashboard?.wallet?.balance || 0).toLocaleString()}
                   <span className="text-white/60 text-2xl">.00</span>
                 </h2>
               </div>
@@ -240,11 +255,13 @@ const DashboardPage = () => {
 
             <div className="space-y-1 relative flex-1 min-h-[200px]">
               {isLoading ? (
-                <div className="absolute inset-0 flex items-center justify-center text-[var(--color-text-secondary)]">
-                  <Loader2 className="animate-spin" size={24} />
-                </div>
+                <LoadingState label="Loading activity..." />
+              ) : isError ? (
+                <ErrorState message="Could not load recent activity." onRetry={() => refetch()} />
+              ) : transactions.length === 0 ? (
+                <EmptyState title="No transactions yet" message="Your latest activity will appear here." />
               ) : (
-                transactions?.slice(0, 4).map((tx: any, idx: number) => (
+                transactions.slice(0, 4).map((tx: any, idx: number) => (
                   <div
                     key={tx.id || idx}
                     onClick={() => navigate(`/app/history/${tx.id}`)}

@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
     ArrowLeft,
@@ -10,45 +10,39 @@ import {
     Wifi,
     Zap,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactElement } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { api } from "../../../core/api";
+import { useToast } from "../../../components/toast/ToastProvider";
 
-const CATEGORIES = [
-  {
-    id: "airtime",
-    name: "Airtime Recharge",
+const CATEGORY_META: Record<string, { icon: ReactElement; desc: string }> = {
+  airtime: {
     icon: <Phone className="text-blue-500" />,
-    desc: "MTN, Airtel, Glo, 9mobile",
-    providers: ["MTN Nigeria", "Airtel Nigeria", "Globacom", "9mobile"],
+    desc: "Mobile airtime recharge",
   },
-  {
-    id: "data",
-    name: "Data Bundles",
+  data: {
     icon: <Wifi className="text-green-500" />,
-    desc: "Internet Subscription",
-    providers: ["MTN Data", "Airtel Data", "Glo Data", "Smile", "Spectranet"],
+    desc: "Internet subscription",
   },
-  {
-    id: "electricity",
-    name: "Electricity",
+  electricity: {
     icon: <Zap className="text-yellow-500" />,
-    desc: "Prepaid & Postpaid",
-    providers: ["IKEDC", "EKEDC", "IBEDC", "AEDC", "KEDCO"],
+    desc: "Prepaid & postpaid",
   },
-  {
-    id: "cable",
-    name: "Cable TV",
+  cable: {
     icon: <Tv className="text-purple-500" />,
-    desc: "DSTV, GOTV, Startimes",
-    providers: ["DSTV", "GOTV", "Startimes", "Showmax"],
+    desc: "TV subscriptions",
   },
-];
+  tv: {
+    icon: <Tv className="text-purple-500" />,
+    desc: "TV subscriptions",
+  },
+};
 
 const BillsPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { categoryId, ref } = useParams();
+  const { showToast } = useToast();
 
   // Determine stage from URL
   const stage = useMemo(() => {
@@ -57,7 +51,18 @@ const BillsPage = () => {
     return "categories"; // default
   }, [location.pathname]);
 
-  const activeCategory = CATEGORIES.find((c) => c.id === categoryId);
+  const { data: categories = [] } = useQuery({
+    queryKey: ["bill-categories"],
+    queryFn: api.bills.categories,
+  });
+
+  const activeCategory = categories.find((c: any) => c.code === categoryId);
+
+  const { data: providers = [] } = useQuery({
+    queryKey: ["bill-providers", categoryId],
+    queryFn: () => api.bills.providers(categoryId || ""),
+    enabled: Boolean(categoryId),
+  });
 
   // Form State
   const [provider, setProvider] = useState("");
@@ -67,9 +72,13 @@ const BillsPage = () => {
   const payMutation = useMutation({
     mutationFn: api.bills.pay,
     onSuccess: (data: any) => {
+      showToast("Bill payment completed", "success");
       navigate(
         `/app/bills/status/${data.id}?cat=${activeCategory?.name}&amt=${amount}`,
       );
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Bill payment failed", "error");
     },
   });
 
@@ -77,7 +86,7 @@ const BillsPage = () => {
     e.preventDefault();
     if (!amount || !account || !provider) return;
     payMutation.mutate({
-      category: activeCategory?.id,
+      category: activeCategory?.code || "airtime",
       provider,
       account,
       amount: Number(amount),
@@ -131,22 +140,22 @@ const BillsPage = () => {
             transition={{ type: "spring", stiffness: 300, damping: 24 }}
             className="grid grid-cols-1 md:grid-cols-2 gap-4"
           >
-            {CATEGORIES.map((category) => (
+            {categories.map((category: any) => (
               <button
-                key={category.id}
-                onClick={() => navigate(`/app/bills/billers/${category.id}`)}
+                key={category.code}
+                onClick={() => navigate(`/app/bills/billers/${category.code}`)}
                 className="glass-panel p-5 rounded-3xl flex items-center justify-between text-left border-[1.5px] border-[var(--color-border)] hover:border-brand-primary/50 shadow-sm transition-all hover:-translate-y-0.5 group"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-2xl bg-[var(--color-bg-secondary)] flex items-center justify-center shadow-inner group-hover:scale-105 transition-transform">
-                    {category.icon}
+                    {(CATEGORY_META[category.code]?.icon || <Phone className="text-blue-500" />)}
                   </div>
                   <div>
                     <h3 className="font-bold text-[var(--color-text-primary)] text-base tracking-tight mb-0.5">
                       {category.name}
                     </h3>
                     <p className="text-xs font-medium text-[var(--color-text-secondary)]">
-                      {category.desc}
+                      {CATEGORY_META[category.code]?.desc || "Utility payments"}
                     </p>
                   </div>
                 </div>
@@ -184,7 +193,7 @@ const BillsPage = () => {
 
             <h2 className="text-2xl font-extrabold tracking-tight mb-8 flex items-center gap-4">
               <div className="w-14 h-14 bg-[var(--color-bg-secondary)] rounded-2xl flex items-center justify-center shadow-inner">
-                {activeCategory.icon}
+                {(CATEGORY_META[activeCategory.code]?.icon || <Phone className="text-blue-500" />)}
               </div>
               {activeCategory.name}
             </h2>
@@ -203,9 +212,9 @@ const BillsPage = () => {
                   <option value="" disabled>
                     Choose a provider
                   </option>
-                  {activeCategory.providers.map((p) => (
-                    <option key={p} value={p}>
-                      {p}
+                  {providers.map((p: any) => (
+                    <option key={p.code} value={p.code}>
+                      {p.name}
                     </option>
                   ))}
                 </select>
@@ -213,8 +222,8 @@ const BillsPage = () => {
 
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-[var(--color-text-secondary)] uppercase tracking-wider ml-1">
-                  {activeCategory.id === "airtime" ||
-                  activeCategory.id === "data"
+                  {activeCategory.code === "airtime" ||
+                  activeCategory.code === "data"
                     ? "Phone Number"
                     : "Meter / Smartcard Number"}
                 </label>
@@ -223,7 +232,7 @@ const BillsPage = () => {
                   value={account}
                   onChange={(e) => setAccount(e.target.value)}
                   placeholder={
-                    activeCategory.id === "airtime"
+                    activeCategory.code === "airtime"
                       ? "090XXXXXXXX"
                       : "Enter number"
                   }

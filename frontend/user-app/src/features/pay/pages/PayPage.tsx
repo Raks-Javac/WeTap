@@ -1,63 +1,83 @@
 import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-    CheckCircle2,
-    CreditCard,
-    Loader2,
-    ShieldAlert,
-    Wifi,
+  CheckCircle2,
+  CreditCard,
+  Loader2,
+  ShieldAlert,
+  Wifi,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useToast } from "../../../components/toast/ToastProvider";
 import { api } from "../../../core/api";
 
 const PayPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { ref } = useParams();
+  const { showToast } = useToast();
 
-  // Determine logical state from URL path
   const scanState = useMemo(() => {
     if (location.pathname.includes("/pay/preview")) return "detected";
     if (location.pathname.includes("/pay/pin")) return "pin";
     if (location.pathname.includes("/pay/status")) return "success";
-    return "scanning"; // default /app/tap
+    return "scanning";
   }, [location.pathname]);
 
   const [isActivelyScanning, setIsActivelyScanning] = useState(false);
   const [pin, setPin] = useState("");
+  const [session, setSession] = useState<any>(null);
+  const [defaultCard, setDefaultCard] = useState<any>(null);
 
   const paymentMutation = useMutation({
-    mutationFn: api.bills.pay,
+    mutationFn: api.payments.executeNfc,
     onSuccess: (data: any) => {
-      navigate(`/app/pay/status/${data.id}`);
+      showToast("NFC payment executed", "success");
+      navigate(`/app/pay/status/${data.reference || data.id}`);
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Payment failed", "error");
     },
   });
 
-  // Tap Scan simulation
   useEffect(() => {
     if (scanState === "scanning") {
       const startTimer = setTimeout(() => setIsActivelyScanning(true), 1000);
-      const detectTimer = setTimeout(() => {
-        setIsActivelyScanning(false);
-        navigate("/app/pay/preview");
-      }, 4000);
+      const detectTimer = setTimeout(async () => {
+        try {
+          setIsActivelyScanning(false);
+          const cards = await api.cards.list();
+          setDefaultCard(cards[0] || null);
+          const nfcSession = await api.payments.initiateNfc("demo-nfc-payload");
+          setSession(nfcSession);
+          navigate("/app/pay/preview");
+        } catch (error: any) {
+          showToast(error.message || "Unable to initialize NFC", "error");
+        }
+      }, 3000);
+
       return () => {
         clearTimeout(startTimer);
         clearTimeout(detectTimer);
       };
     }
-  }, [scanState, navigate]);
+  }, [scanState, navigate, showToast]);
 
-  // Simulate PIN confirmation
   useEffect(() => {
     if (scanState === "pin" && pin.length === 4) {
       paymentMutation.mutate({
-        amount: 14500,
-        merchant: "NextGen Supermarket",
+        session_id: session?.session_id,
+        card_id: defaultCard?.id,
+        method: "two_tap",
+        pin_hash: pin,
+        amount: session?.amount || "0.00",
       });
     }
-  }, [pin, scanState]);
+  }, [pin, scanState, session, defaultCard, paymentMutation]);
+
+  const merchant = session?.merchant || "Demo Merchant";
+  const amount = Number(session?.amount || 14500);
 
   const PinPad = () => (
     <div className="mt-8 mb-4">
@@ -97,7 +117,6 @@ const PayPage = () => {
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] relative">
       <AnimatePresence mode="wait">
-        {/* State 1: Scanning */}
         {scanState === "scanning" && (
           <motion.div
             key="scan"
@@ -111,11 +130,7 @@ const PayPage = () => {
                 <>
                   <motion.div
                     animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                     className="absolute inset-0 rounded-full border border-brand-primary"
                   />
                   <motion.div
@@ -131,10 +146,7 @@ const PayPage = () => {
                 </>
               )}
               <div className="w-24 h-24 bg-brand-primary/10 rounded-full flex items-center justify-center text-brand-primary">
-                <Wifi
-                  size={40}
-                  className={isActivelyScanning ? "animate-pulse" : ""}
-                />
+                <Wifi size={40} className={isActivelyScanning ? "animate-pulse" : ""} />
               </div>
             </div>
             <h2 className="text-2xl font-bold mb-2">
@@ -146,7 +158,6 @@ const PayPage = () => {
           </motion.div>
         )}
 
-        {/* State 2: Preview Drawer */}
         {scanState === "detected" && (
           <motion.div
             key="detected"
@@ -159,11 +170,9 @@ const PayPage = () => {
               <div className="mx-auto w-16 h-16 bg-[var(--color-bg-tertiary)] rounded-full flex items-center justify-center mb-4 text-2xl">
                 🏪
               </div>
-              <h3 className="text-2xl font-bold tracking-tight mb-1">
-                Pay NextGen Supermarket
-              </h3>
+              <h3 className="text-2xl font-bold tracking-tight mb-1">Pay {merchant}</h3>
               <p className="text-4xl font-extrabold text-gradient">
-                ₦14,500.00
+                ₦{amount.toLocaleString()}.00
               </p>
             </div>
 
@@ -173,13 +182,10 @@ const PayPage = () => {
                 <div>
                   <p className="font-semibold text-sm">Virtual Card</p>
                   <p className="text-xs text-[var(--color-text-secondary)]">
-                    •••• 4829
+                    •••• {defaultCard?.last4 || "----"}
                   </p>
                 </div>
               </div>
-              <button className="text-sm font-semibold text-brand-primary">
-                Change
-              </button>
             </div>
 
             <div className="flex gap-4">
@@ -187,17 +193,15 @@ const PayPage = () => {
                 disabled={paymentMutation.isPending}
                 onClick={() =>
                   paymentMutation.mutate({
-                    amount: 14500,
-                    merchant: "NextGen Supermarket",
+                    session_id: session?.session_id,
+                    card_id: defaultCard?.id,
+                    method: "one_tap",
+                    amount: session?.amount || "0.00",
                   })
                 }
                 className="flex-1 flex justify-center py-4 border border-brand-primary text-brand-primary rounded-xl font-bold hover:bg-brand-primary/10 transition disabled:opacity-50"
               >
-                {paymentMutation.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  "1-Tap (Auto)"
-                )}
+                {paymentMutation.isPending ? <Loader2 className="animate-spin" /> : "1-Tap (Auto)"}
               </button>
               <button
                 disabled={paymentMutation.isPending}
@@ -214,7 +218,6 @@ const PayPage = () => {
           </motion.div>
         )}
 
-        {/* State 3: PIN Input */}
         {scanState === "pin" && (
           <motion.div
             key="pin"
@@ -225,17 +228,12 @@ const PayPage = () => {
           >
             <h3 className="text-2xl font-bold mb-2">Confirm Payment</h3>
             <p className="text-[var(--color-text-secondary)]">
-              Enter PIN to authorize ₦14,500.00
+              Enter PIN to authorize ₦{amount.toLocaleString()}.00
             </p>
             {paymentMutation.isPending ? (
               <div className="flex flex-col items-center justify-center h-64 gap-4">
-                <Loader2
-                  size={40}
-                  className="text-brand-primary animate-spin"
-                />
-                <p className="text-[var(--color-text-secondary)] font-medium">
-                  Processing...
-                </p>
+                <Loader2 size={40} className="text-brand-primary animate-spin" />
+                <p className="text-[var(--color-text-secondary)] font-medium">Processing...</p>
               </div>
             ) : (
               <PinPad />
@@ -243,7 +241,6 @@ const PayPage = () => {
           </motion.div>
         )}
 
-        {/* State 4: Success Cinematic */}
         {scanState === "success" && (
           <motion.div
             key="success"
@@ -254,19 +251,14 @@ const PayPage = () => {
             <motion.div
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
-              transition={{
-                type: "spring",
-                damping: 10,
-                mass: 0.75,
-                stiffness: 100,
-              }}
+              transition={{ type: "spring", damping: 10, mass: 0.75, stiffness: 100 }}
               className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center text-white mb-6 shadow-xl shadow-green-500/30"
             >
               <CheckCircle2 size={48} />
             </motion.div>
             <h2 className="text-3xl font-bold mb-2">Payment Successful!</h2>
             <p className="text-xl text-[var(--color-text-secondary)] mb-2">
-              ₦14,500.00 paid to NextGen Supermarket
+              ₦{amount.toLocaleString()}.00 paid to {merchant}
             </p>
             <div className="bg-[var(--color-bg-secondary)] px-4 py-2 rounded-lg font-mono text-xs text-[var(--color-text-tertiary)] mb-8">
               Ref: {ref || "SIMULATED-TXN"}

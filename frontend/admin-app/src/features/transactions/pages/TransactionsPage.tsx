@@ -7,6 +7,9 @@ import {
 import { AnimatePresence, motion } from "framer-motion";
 import { Download, Filter, Search, X } from "lucide-react";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import LoadingState from "../../../components/state/LoadingState";
+import { adminApi } from "../../../services/adminApi";
 
 // Mock Data
 type Transaction = {
@@ -17,41 +20,6 @@ type Transaction = {
   customer: string;
   timestamp: string;
 };
-
-const defaultData: Transaction[] = [
-  {
-    id: "TXN-9382",
-    status: "SUCCESS",
-    amount: "₦12,500.00",
-    type: "NFC Two-Tap",
-    customer: "John Doe",
-    timestamp: "2023-10-24 14:30:22",
-  },
-  {
-    id: "TXN-9381",
-    status: "SUCCESS",
-    amount: "₦450.00",
-    type: "Airtime",
-    customer: "Jane Smith",
-    timestamp: "2023-10-24 14:28:10",
-  },
-  {
-    id: "TXN-9380",
-    status: "FAILED",
-    amount: "₦85,000.00",
-    type: "P2P Transfer",
-    customer: "Mike Ross",
-    timestamp: "2023-10-24 14:25:01",
-  },
-  {
-    id: "TXN-9379",
-    status: "PENDING",
-    amount: "₦1,200.00",
-    type: "NFC One-Tap",
-    customer: "Sarah Connor",
-    timestamp: "2023-10-24 14:20:55",
-  },
-];
 
 const columnHelper = createColumnHelper<Transaction>();
 
@@ -108,14 +76,40 @@ const columns = [
 ];
 
 const TransactionsPage = () => {
-  const [data] = useState(() => [...defaultData]);
+  const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<Transaction | null>(null);
+  const { data: response, isLoading } = useQuery({
+    queryKey: ["admin-transactions"],
+    queryFn: () => adminApi.transactions({ page: 1, limit: 50 }),
+  });
+
+  const data: Transaction[] = (response?.data?.items || []).map((item: any) => ({
+    id: String(item.reference || item.id || ""),
+    status: String(item.status || "PENDING") as Transaction["status"],
+    amount: `₦${Number(item.amount || 0).toLocaleString()}.00`,
+    type: String(item.type || "Transaction"),
+    customer: String(item.user_email || item.customer || item.counterparty || "N/A"),
+    timestamp: String(item.created_at || item.timestamp || ""),
+  }));
+
+  const filteredData = data.filter((item) => {
+    if (!search.trim()) return true;
+    const needle = search.toLowerCase();
+    return (
+      item.id.toLowerCase().includes(needle) ||
+      item.customer.toLowerCase().includes(needle) ||
+      item.type.toLowerCase().includes(needle) ||
+      item.amount.toLowerCase().includes(needle)
+    );
+  });
 
   const table = useReactTable({
-    data,
+    data: filteredData,
     columns,
     getCoreRowModel: getCoreRowModel(),
   });
+
+  if (isLoading) return <LoadingState label="Loading transactions..." />;
 
   return (
     <div className="space-y-6">
@@ -143,6 +137,8 @@ const TransactionsPage = () => {
         <Search size={20} className="text-[var(--color-text-tertiary)] ml-2" />
         <input
           type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
           placeholder="Search by ID, Customer, or Amount..."
           className="flex-1 bg-transparent border-none focus:outline-none text-sm p-2 text-[var(--color-text-primary)]"
         />

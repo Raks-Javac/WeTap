@@ -3,12 +3,14 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Loader2, MessageSquare, Send, Sparkles, X } from "lucide-react";
 import React, { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { useToast } from "../../../components/toast/ToastProvider";
 import { api } from "../../../core/api";
 
 const AIChatPanel = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
@@ -41,9 +43,15 @@ const AIChatPanel = () => {
   }, [messages, isOpen]);
 
   const chatMutation = useMutation({
-    mutationFn: api.chat.send,
+    mutationFn: (text: string) => api.chat.send(text),
     onSuccess: (data: any) => {
       setMessages((prev) => [...prev, { role: data.role, text: data.text }]);
+      if (data.action?.type === "navigate" && data.action.route) {
+        navigate(data.action.route, { state: data.action.prefill || {} });
+      }
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Chat request failed", "error");
     },
   });
 

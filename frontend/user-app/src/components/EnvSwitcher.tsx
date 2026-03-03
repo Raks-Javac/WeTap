@@ -3,7 +3,7 @@ import { useGlobalStore } from "../core/store";
 
 const EnvSwitcher = () => {
   const { environment, setEnvironment } = useGlobalStore();
-  const environments = ["dev", "uat", "prod"] as const;
+  const environments = ["dev", "uat", "staging", "prod"] as const;
 
   return (
     <div className="glass-panel inline-flex p-1 rounded-full relative gap-1">

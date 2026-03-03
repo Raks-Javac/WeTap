@@ -14,6 +14,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { useAdminStore } from "../core/store";
+import { adminApi } from "../services/adminApi";
 
 const AdminLayout = () => {
   const { theme, environment, setTheme, logout } = useAdminStore();
@@ -98,7 +99,10 @@ const AdminLayout = () => {
         </div>
 
         <button
-          onClick={() => logout()}
+          onClick={() => {
+            adminApi.logout();
+            logout();
+          }}
           className="flex items-center gap-3 w-full text-left text-red-500 hover:bg-red-500/5 font-bold px-3 py-2.5 rounded-xl transition-colors"
         >
           <LogOut size={18} /> Exit System
@@ -138,6 +142,8 @@ const AdminLayout = () => {
               ? "bg-brand-accent/90"
               : environment === "uat"
                 ? "bg-brand-primary/90"
+                : environment === "staging"
+                  ? "bg-amber-600/90"
                 : "bg-emerald-600/90"
           }`}
         >

@@ -5,9 +5,29 @@ import {
     ShieldCheck,
 } from "lucide-react";
 import { useState } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { adminApi } from "../../../services/adminApi";
+import { useToast } from "../../../components/toast/ToastProvider";
 
 const CardWizard = () => {
   const [step, setStep] = useState(1);
+  const { showToast } = useToast();
+  const { data: cardsResponse, refetch } = useQuery({
+    queryKey: ["admin-cards"],
+    queryFn: () => adminApi.cards(1, 20),
+  });
+  const cards = cardsResponse?.data?.items || [];
+
+  const blockMutation = useMutation({
+    mutationFn: adminApi.blockCard,
+    onSuccess: () => {
+      showToast("Card blocked", "success");
+      refetch();
+    },
+    onError: (err: any) => {
+      showToast(err.message || "Unable to block card", "error");
+    },
+  });
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -61,6 +81,9 @@ const CardWizard = () => {
               <p className="text-sm text-[var(--color-text-secondary)] mt-2">
                 Instant issuance for online transactions and NFC mobile
                 payments.
+              </p>
+              <p className="text-xs text-[var(--color-text-tertiary)] mt-2">
+                Existing cards: {cards.length}
               </p>
               <div className="mt-4">
                 <span className="text-xs font-bold text-brand-primary uppercase tracking-wider">
@@ -158,15 +181,24 @@ const CardWizard = () => {
           </p>
 
           <div className="bg-[var(--color-bg-secondary)] py-4 px-8 rounded-xl font-mono text-sm border border-[var(--color-border)] mb-8">
-            Token ID: VTP-492-9981-XXXX
+            Token ID: {String(cards[0]?.id || "N/A")}
           </div>
 
-          <button
-            onClick={() => setStep(1)}
-            className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] px-8 py-3 rounded-lg font-bold transition"
-          >
-            Issue Another Card
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setStep(1)}
+              className="bg-[var(--color-bg-primary)] border border-[var(--color-border)] hover:bg-[var(--color-bg-secondary)] px-8 py-3 rounded-lg font-bold transition"
+            >
+              Issue Another Card
+            </button>
+            <button
+              onClick={() => cards[0]?.id && blockMutation.mutate(String(cards[0].id))}
+              disabled={!cards[0]?.id || blockMutation.isPending}
+              className="bg-red-500 text-white px-8 py-3 rounded-lg font-bold transition disabled:opacity-50"
+            >
+              Block Latest Card
+            </button>
+          </div>
         </div>
       )}
     </div>

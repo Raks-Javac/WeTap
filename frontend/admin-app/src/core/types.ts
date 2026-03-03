@@ -1,1 +1,1 @@
-export type AppEnvironment = "dev" | "uat" | "prod";
+export type AppEnvironment = "dev" | "uat" | "staging" | "prod";

@@ -3,4 +3,4 @@ export type ThemeContextType = {
   setTheme: (theme: "light" | "dark") => void;
 };
 
-export type AppEnvironment = "dev" | "uat" | "prod";
+export type AppEnvironment = "dev" | "uat" | "staging" | "prod";

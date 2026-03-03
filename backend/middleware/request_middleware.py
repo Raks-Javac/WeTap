@@ -9,11 +9,18 @@ from core.rate_limit import is_limited
 SUSPICIOUS_PATTERNS = [
     r"<script",
     r"javascript:",
-    r"union\\s+select",
-    r"drop\\s+table",
+    r"union\s+select",
+    r"drop\s+table",
     r";--",
-    r"\\balert\\s*\\(",
+    r"\balert\s*\(",
 ]
+COMPILED_SUSPICIOUS_PATTERNS = []
+for pattern in SUSPICIOUS_PATTERNS:
+    try:
+        COMPILED_SUSPICIOUS_PATTERNS.append(re.compile(pattern, re.IGNORECASE))
+    except re.error:
+        # Keep middleware fail-safe if a bad regex is introduced.
+        continue
 JSON_METHODS = {"POST", "PUT", "PATCH"}
 
 
@@ -99,8 +106,8 @@ class RequestSecurityMiddleware:
 
     def _contains_suspicious(self, value) -> bool:
         if isinstance(value, str):
-            for pattern in SUSPICIOUS_PATTERNS:
-                if re.search(pattern, value, re.IGNORECASE):
+            for pattern in COMPILED_SUSPICIOUS_PATTERNS:
+                if pattern.search(value):
                     return True
             return False
         if isinstance(value, dict):
